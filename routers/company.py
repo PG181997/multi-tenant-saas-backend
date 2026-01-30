@@ -1,0 +1,58 @@
+from fastapi import APIRouter, Depends, HTTPException, Path
+from pydantic import BaseModel, Field
+from database import SessionLocal
+from sqlalchemy.orm import Session
+import models
+
+router = APIRouter(prefix="/companies", tags=["Companies"])
+
+
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+
+    finally:
+        db.close()
+
+
+class Create_company(BaseModel):
+    name: str = Field(min_length=1)
+
+
+def get_all_companies(db):
+
+    return db.query(models.Company).all()
+
+
+@router.post("/")
+def create_company(company: Create_company, db: Session = Depends(get_db)):
+
+    existing_company = get_all_companies(db)
+
+    for echCompany in existing_company:
+        if echCompany.name.lower() == company.name.lower():
+            raise HTTPException(status_code=400, detail="Company already exists")
+
+    company = models.Company(name=company.name)
+    db.add(company)
+    db.commit()
+    return {"id": company.id, "name": company.name}
+
+
+@router.get("/get_all_company")
+def get_all_company(db: Session = Depends(get_db)):
+    return get_all_companies(db)
+
+
+@router.delete("/{company_id}")
+def delete_company(company_id: int = Path(gt=0), db: Session = Depends(get_db)):
+
+    company = db.query(models.Company).filter(models.Company.id == company_id).first()
+
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    db.delete(company)
+    db.commit()

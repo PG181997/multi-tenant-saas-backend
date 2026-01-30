@@ -1,0 +1,14 @@
+# Virtual environment
+venv/
+saas/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
