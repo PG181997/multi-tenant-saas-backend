@@ -22,16 +22,6 @@ def get_all_users_from_db(db):
 
     return db.query(User).all()
 
-
-class Create_user(BaseModel):
-    first_name: str
-    last_name: str
-    email: str
-    user_name: str
-    role: str
-    company_id: int
-
-
 class Update_user(BaseModel):
     first_name: str
     last_name: str
@@ -74,28 +64,14 @@ async def update_user(user_id: int, user: Update_user, db: Session = Depends(get
     exisiting_user.company_id = user.company_id
 
     db.commit()
-
-
-@router.post("/")
-async def create_new_user(user: Create_user, db: Session = Depends(get_db)):
-
-    company = db.query(Company).filter(Company.id == user.company_id).first()
-
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exisits")
-
-    new_user = User(
-        first_name=user.first_name,
-        last_name=user.last_name,
-        email=user.email,
-        user_name=user.user_name,
-        role=user.role,
-        company_id=user.company_id,
-    )
-
-    db.add(new_user)
+    
+@router.delete("/{user_id}")
+async def delete_user(user_id:int, db: Session = Depends(get_db)):
+    exisiting_user = db.query(User).filter(User.id == user_id).first()
+    if not exisiting_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    print("exisiting_user: ", exisiting_user)
+    db.query(User).filter(User.id == user_id).delete()
     db.commit()
+
+
