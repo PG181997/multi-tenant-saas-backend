@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from database import SessionLocal
 from sqlalchemy.orm import Session
 import models
+from routers.auth import get_current_user
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -27,7 +28,11 @@ def get_all_companies(db):
 
 
 @router.post("/")
-def create_company(company: Create_company, db: Session = Depends(get_db)):
+def create_company(company: Create_company, db: Session = Depends(get_db), current_user:dict = Depends(get_current_user)):
+
+    if current_user["role"] != 'super_admin':
+        raise HTTPException(status_code=304, detail="only super admin can creatge company")
+
 
     existing_company = get_all_companies(db)
 
