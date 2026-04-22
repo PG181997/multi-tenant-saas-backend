@@ -59,46 +59,14 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user.")
 	
 
-class Create_user(BaseModel):
-	first_name: str
-	last_name: str
-	email: str
-	user_name: str
-	role: str
-	company_id: int
-	password: str
+
 	
 class Token(BaseModel):
 	access_token: str
 	token_type: str
 	
 	
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_new_user(user: Create_user, db: Session = Depends(get_db)):
 
-	company = db.query(Company).filter(Company.id == user.company_id).first()
-
-	if not company:
-		raise HTTPException(status_code=404, detail="Company not found")
-
-	existing_user = db.query(User).filter(User.email == user.email).first()
-	if existing_user:
-		raise HTTPException(status_code=400, detail="User already exisits")
-	
-	
-
-	new_user = User(
-		first_name=user.first_name,
-		last_name=user.last_name,
-		email=user.email,
-		user_name=user.user_name,
-		role=user.role,
-		company_id=user.company_id,
-		hashed_password = bcrypt_context.hash(user.password),
-	)
-	# return new_user
-	db.add(new_user)
-	db.commit()
 	
 @router.post('/token', response_model=Token)
 async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):

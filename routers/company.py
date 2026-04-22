@@ -52,8 +52,11 @@ def get_all_company(db: Session = Depends(get_db)):
 
 
 @router.delete("/{company_id}")
-def delete_company(company_id: int = Path(gt=0), db: Session = Depends(get_db)):
+def delete_company(company_id: int = Path(gt=0), db: Session = Depends(get_db), current_user:dict = Depends(get_current_user)):
 
+    if current_user["role"] != 'super_admin':
+        raise HTTPException(status_code=304, detail="only super admin can creatge company")
+    
     company = db.query(models.Company).filter(models.Company.id == company_id).first()
 
     if not company:
@@ -61,3 +64,4 @@ def delete_company(company_id: int = Path(gt=0), db: Session = Depends(get_db)):
 
     db.delete(company)
     db.commit()
+    return {"status":"Deleted successfully"}
