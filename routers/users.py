@@ -83,11 +83,20 @@ async def create_new_user(user: Create_user, db: Session = Depends(get_db), curr
 	print("current_user:", current_user)
 	print("user:", user)
 
-	if user.role.lower() == "admin" and current_user.get("role").lower() != "super_admin":
-		return HTTPException(status_code=400, detail="Admin can be created only by super admin.")
+	if (current_user.get("role") or "").lower() == "admin":
+		if current_user.get("company_id") != user.company_id:
+			raise HTTPException(status_code=400, detail="Admin work only on his/her company.")
+
+	if (user.role or "").lower() == "admin" and (current_user.get("role") or "").lower() != "super_admin":
+		raise HTTPException(status_code=400, detail="Admin can be created only by super admin.")
 	
-	if user.role.lower() == "user" and current_user.get("role").lower() not in ["super_admin", "admin"]:
-		return HTTPException(status_code=400, detail="user can be created only by super-admin or admin.")
+	if (user.role or "").lower() == "user" and (current_user.get("role") or "").lower() not in ["super_admin", "admin"]:
+		raise HTTPException(status_code=403, detail="user can be created only by super-admin or admin.")
+
+	if (user.role or "").lower() == "admin" and (current_user.get("role") or "").lower() == "admin":
+
+		if user.company_id != (current_user.get("company_id") or ""):
+			raise HTTPException(status_code=403, detail="Admin can create another admin only in his/her company.")
 
 	company = db.query(Company).filter(Company.id == user.company_id).first()
 
@@ -97,11 +106,9 @@ async def create_new_user(user: Create_user, db: Session = Depends(get_db), curr
 	existing_user = db.query(User).filter(User.email == user.email).first()
 
 	if existing_user:
-		raise HTTPException(status_code=400, detail="User already exisits")
+		raise HTTPException(status_code=400, detail="User already exists")
 	
 	print("CHECK HERE", current_user.get("company_id"), user.company_id)
-	if current_user.get("role").lower() == "admin" and current_user.get("company_id") != user.company_id:
-		raise HTTPException(status_code=400, detail="Admin can create user only in his/her company.")
 	
 
 	new_user = User(
@@ -116,8 +123,9 @@ async def create_new_user(user: Create_user, db: Session = Depends(get_db), curr
 	# return new_user
 	db.add(new_user)
 	db.commit()
+	db.refresh(new_user)
 
-	return {"status":"user created successfully"}
+	return {"id":new_user.id,"status":"user created successfully"}
 	
 @router.delete("/{user_id}")
 async def delete_user(user_id:int, db: Session = Depends(get_db)):
