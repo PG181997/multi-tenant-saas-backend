@@ -28,11 +28,16 @@ def get_all_companies(db):
 
 
 @router.post("/")
-def create_company(company: Create_company, db: Session = Depends(get_db), current_user:dict = Depends(get_current_user)):
+def create_company(
+    company: Create_company,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
 
-    if current_user["role"] != 'super_admin':
-        raise HTTPException(status_code=304, detail="only super admin can creatge company")
-
+    if current_user["role"] != "super_admin":
+        raise HTTPException(
+            status_code=304, detail="only super admin can creatge company"
+        )
 
     existing_company = get_all_companies(db)
 
@@ -47,16 +52,28 @@ def create_company(company: Create_company, db: Session = Depends(get_db), curre
 
 
 @router.get("/get_all_company")
-def get_all_company(db: Session = Depends(get_db)):
+def get_all_company(
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    if (current_user.get("role") or "").lower() != "super_admin":
+        raise HTTPException(
+            status_code=401, detail="Only super admin can get all the company."
+        )
     return get_all_companies(db)
 
 
 @router.delete("/{company_id}")
-def delete_company(company_id: int = Path(gt=0), db: Session = Depends(get_db), current_user:dict = Depends(get_current_user)):
+def delete_company(
+    company_id: int = Path(gt=0),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
 
-    if current_user["role"] != 'super_admin':
-        raise HTTPException(status_code=304, detail="only super admin can creatge company")
-    
+    if current_user["role"] != "super_admin":
+        raise HTTPException(
+            status_code=304, detail="only super admin can creatge company"
+        )
+
     company = db.query(models.Company).filter(models.Company.id == company_id).first()
 
     if not company:
@@ -64,4 +81,4 @@ def delete_company(company_id: int = Path(gt=0), db: Session = Depends(get_db), 
 
     db.delete(company)
     db.commit()
-    return {"status":"Deleted successfully"}
+    return {"status": "Deleted successfully"}

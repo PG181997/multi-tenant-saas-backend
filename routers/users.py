@@ -5,135 +5,182 @@ from database import SessionLocal
 from models import User, Company
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-
 from routers.auth import get_current_user
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
-bcrypt_context = CryptContext(schemes=['bcrypt'])
+bcrypt_context = CryptContext(schemes=["bcrypt"])
+
 
 def get_db():
-	db = SessionLocal()
-	try:
-		yield db
+    db = SessionLocal()
+    try:
+        yield db
 
-	finally:
-		db.close()
+    finally:
+        db.close()
 
 
 def get_all_users_from_db(db):
 
-	return db.query(User).all()
+    return db.query(User).all()
+
+
+def get_all_user_from_company(db, company_id):
+
+    return db.query(User).filter(User.company_id == company_id).all()
+
 
 class Update_user(BaseModel):
-	first_name: str
-	last_name: str
-	email: str
-	user_name: str
-	role: str
-	company_id: int
+    first_name: str
+    last_name: str
+    email: str
+    user_name: str
+    role: str
+    company_id: int
+
 
 class Create_user(BaseModel):
-	first_name: str
-	last_name: str
-	email: str
-	user_name: str
-	role: str
-	company_id: int
-	password: str
+    first_name: str
+    last_name: str
+    email: str
+    user_name: str
+    role: str
+    company_id: int
+    password: str
+
 
 @router.get("/get_all_users")
-async def get_all_users(db: Session = Depends(get_db)):
-	return get_all_users_from_db(db)
+async def get_all_users(
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+
+    current_user_role = current_user.get("role") or ""
+    current_user_company = current_user.get("company_id")
+
+    if current_user_role == "super_admin":
+        return get_all_users_from_db(db)
+
+    elif current_user_role == "admin":
+        return get_all_user_from_company(db, current_user_company)
 
 
 @router.put("/{user_id}")
 async def update_user(user_id: int, user: Update_user, db: Session = Depends(get_db)):
 
-	exisiting_user = db.query(User).filter(User.id == user_id).first()
-	if not exisiting_user:
-		raise HTTPException(status_code=404, detail="User not found")
+    exisiting_user = db.query(User).filter(User.id == user_id).first()
+    if not exisiting_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-	existing_company = db.query(Company).filter(Company.id == user.company_id).first()
-	if not existing_company:
-		raise HTTPException(status_code=404, detail="Company not found")
+    existing_company = db.query(Company).filter(Company.id == user.company_id).first()
+    if not existing_company:
+        raise HTTPException(status_code=404, detail="Company not found")
 
-	email_exists = (
-		db.query(User)
-		.filter(User.email == user.email)
-		.filter(User.id != user_id)
-		.first()
-	)
-	if email_exists:
-		raise HTTPException(status_code=400, detail="Email already exists")
+    email_exists = (
+        db.query(User)
+        .filter(User.email == user.email)
+        .filter(User.id != user_id)
+        .first()
+    )
+    if email_exists:
+        raise HTTPException(status_code=400, detail="Email already exists")
 
-	exisiting_user.first_name = user.first_name
-	exisiting_user.last_name = user.last_name
-	exisiting_user.email = user.email
-	exisiting_user.user_name = user.user_name
-	exisiting_user.role = user.role
-	exisiting_user.company_id = user.company_id
+    exisiting_user.first_name = user.first_name
+    exisiting_user.last_name = user.last_name
+    exisiting_user.email = user.email
+    exisiting_user.user_name = user.user_name
+    exisiting_user.role = user.role
+    exisiting_user.company_id = user.company_id
 
-	db.commit()
+    db.commit()
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_new_user(user: Create_user, db: Session = Depends(get_db), current_user:dict = Depends(get_current_user)):
+async def create_new_user(
+    user: Create_user,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
 
-	print("current_user:", current_user)
-	print("user:", user)
+    logger.info(f"current_user: {current_user}")
+    logger.info(f"user to create: {user}")
 
-	if (current_user.get("role") or "").lower() == "admin":
-		if current_user.get("company_id") != user.company_id:
-			raise HTTPException(status_code=400, detail="Admin work only on his/her company.")
+    # Logged in user
+    current_user_role_lower = (current_user.get("role") or "").lower()
+    current_user_company_id = current_user.get("company_id")
 
-	if (user.role or "").lower() == "admin" and (current_user.get("role") or "").lower() != "super_admin":
-		raise HTTPException(status_code=400, detail="Admin can be created only by super admin.")
-	
-	if (user.role or "").lower() == "user" and (current_user.get("role") or "").lower() not in ["super_admin", "admin"]:
-		raise HTTPException(status_code=403, detail="user can be created only by super-admin or admin.")
+    # User that needs to be created
+    user_role_lower = (user.role or "").lower()
 
-	if (user.role or "").lower() == "admin" and (current_user.get("role") or "").lower() == "admin":
+    # Admin creation
+    if user_role_lower == "admin":
 
-		if user.company_id != (current_user.get("company_id") or ""):
-			raise HTTPException(status_code=403, detail="Admin can create another admin only in his/her company.")
+        if current_user_role_lower not in ["admin", "super_admin"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Only admin and super admin can create an admin.",
+            )
 
-	company = db.query(Company).filter(Company.id == user.company_id).first()
+        if current_user_role_lower == "admin":
+            if user.company_id != current_user_company_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Admin and super admin can create another admin only in their  company.",
+                )
 
-	if not company:
-		raise HTTPException(status_code=404, detail="Company not found")
+    if user_role_lower == "user":
 
-	existing_user = db.query(User).filter(User.email == user.email).first()
+        if current_user_role_lower not in ["admin", "super_admin"]:
+            raise HTTPException(
+                status_code=403, detail="Only admin and super admin can create a user."
+            )
 
-	if existing_user:
-		raise HTTPException(status_code=400, detail="User already exists")
-	
-	print("CHECK HERE", current_user.get("company_id"), user.company_id)
-	
+        if (
+            current_user_role_lower == "admin"
+            and current_user_company_id != user.company_id
+        ):
+            raise HTTPException(
+                status_code=403, detail="Admin can create user only in their  company."
+            )
 
-	new_user = User(
-		first_name=user.first_name,
-		last_name=user.last_name,
-		email=user.email,
-		user_name=user.user_name,
-		role=user.role,
-		company_id=user.company_id,
-		hashed_password = bcrypt_context.hash(user.password),
-	)
-	# return new_user
-	db.add(new_user)
-	db.commit()
-	db.refresh(new_user)
+    existing_user = db.query(User).filter(User.email == user.email).first()
 
-	return {"id":new_user.id,"status":"user created successfully"}
-	
+    if existing_user:
+        logger.warning("User already exists")
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    new_user = User(
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        user_name=user.user_name,
+        role=user_role_lower,
+        company_id=user.company_id,
+        hashed_password=bcrypt_context.hash(user.password),
+    )
+
+    # return new_user
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except Exception:
+        db.rollback()
+
+        raise HTTPException(status_code=500, detail="User creation failed")
+
+    return {"id": new_user.id, "status": "user created successfully"}
+
+
 @router.delete("/{user_id}")
-async def delete_user(user_id:int, db: Session = Depends(get_db)):
-	exisiting_user = db.query(User).filter(User.id == user_id).first()
-	if not exisiting_user:
-		raise HTTPException(status_code=404, detail="User not found")
-	print("exisiting_user: ", exisiting_user)
-	db.query(User).filter(User.id == user_id).delete()
-	db.commit()
-
-
+async def delete_user(user_id: int, db: Session = Depends(get_db)):
+    exisiting_user = db.query(User).filter(User.id == user_id).first()
+    if not exisiting_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    print("exisiting_user: ", exisiting_user)
+    db.query(User).filter(User.id == user_id).delete()
+    db.commit()
