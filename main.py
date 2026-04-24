@@ -15,10 +15,10 @@ app = FastAPI(title="Multi-tenant SaaS")
 
 
 # include router
+app.include_router(auth.router)
 app.include_router(company.router)
 app.include_router(users.router)
 app.include_router(projects.router)
-app.include_router(auth.router)
 app.include_router(tasks.router)
 
 
