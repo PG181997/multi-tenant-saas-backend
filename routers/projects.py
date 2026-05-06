@@ -21,7 +21,17 @@ def get_db():
 
 def get_all_company_projects(db, companid: int):
 
-    return db.query(Projects).filter(company_id=companid)
+    return [
+        {
+            "project_id": i.id,
+            "project_name": i.project_name,
+            "created_at": i.created_at,
+            "created_by": i.created_by_id,
+            "duration": i.duration,
+            "edited_at": i.edited_at,
+        }
+        for i in db.query(Projects).filter(Projects.company_id == companid).all()
+    ]
 
 
 class create_project(BaseModel):
@@ -36,7 +46,7 @@ async def create_new_project(
     current_user: dict = Depends(get_current_user),
 ):
     current_user_role = (current_user.get("role") or "").lower()
-    current_user_id = current_user.get("id")
+    current_user_id = current_user.get("user_id")
     current_user_company_id = current_user.get("company_id")
 
     logging.info(f"current_user {current_user}")
@@ -67,14 +77,18 @@ async def update_project():
     return {"response": "project updated"}
 
 
-# @router.get("/")
-# async def get_all_project(
-#     db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
-# ):
-#     current_user_company_id = current_user.get("company_id")
-#     return get_all_company_projects(db, current_user_company_id)
+@router.get("/")
+async def get_all_project(
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    current_user_company_id = current_user.get("company_id")
+    all_project = get_all_company_projects(
+        db, current_user_company_id  # type: ignore
+    )  # pyright: ignore[reportArgumentType]
+    logging.info(f"all_company_obj: {all_project}")
+    return all_project
 
 
-@router.delete("/delete")
+@router.delete("/{project_id}")
 async def delete_project():
     return {"response": "project deleted"}
