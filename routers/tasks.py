@@ -99,16 +99,37 @@ async def create_new_task(
     return {"response": "task created"}
 
 
-@router.put("/")
+@router.patch("/")
 async def update_task():
     return {"response": "project updated"}
 
 
 @router.get("/")
-async def get_all_task():
-    return {"response": "sucess"}
+async def get_all_task(
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    current_user_company_id = current_user.get("company_id")
+    all_projects = (
+        db.query(Projects).filter(Projects.company_id == current_user_company_id).all()
+    )
+    project_id = [i.id for i in all_projects]
+    all_tasks = db.query(Tasks).filter(Tasks.project_id.in_(project_id)).all()
+
+    return [
+        {
+            "task_id": i.id,
+            "task_name": i.task_name,
+            "task_status": i.task_status,
+            "task_project_id": i.project_id,
+            "assigned_to": i.assigned_to,
+            "created_at": i.created_at,
+            "updated_at": i.edited_at,
+        }
+        for i in all_tasks
+    ]
 
 
 @router.delete("/delete")
 async def delete_task():
+
     return {"response": "project deleted"}
