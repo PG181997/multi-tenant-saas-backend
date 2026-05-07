@@ -10,7 +10,6 @@ from passlib.context import CryptContext
 from routers.auth import get_current_user
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 

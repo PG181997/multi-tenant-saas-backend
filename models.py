@@ -33,8 +33,11 @@ class Tasks(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     created_by_id = Column(Integer, ForeignKey("users.id"))
     project_id = Column(Integer, ForeignKey("projects.id"))
+    assigned_to = Column(Integer, ForeignKey("users.id"))
+    task_status = Column(String)
+    edited_at = Column(DateTime, nullable=True)
 
-    creator = relationship("User", back_populates="tasks")
+    creator = relationship("User", foreign_keys=[created_by_id], back_populates="tasks")
     project = relationship("Projects", back_populates="tasks")
 
 
@@ -53,4 +56,6 @@ class User(Base):
     company = relationship("Company", back_populates="users")
 
     projects = relationship("Projects", back_populates="creator")
-    tasks = relationship("Tasks", back_populates="creator")
+    tasks = relationship(
+        "Tasks", foreign_keys="[Tasks.created_by_id]", back_populates="creator"
+    )

@@ -99,12 +99,12 @@ async def update_project(
         raise HTTPException(status_code=401, detail="wrong role or company")
 
     if project.project_name != None:
-        project_obj.project_name = project.project_name
+        project_obj.project_name = project.project_name  # type: ignore
 
     if project.duration != None:
-        project_obj.duration = project.duration
+        project_obj.duration = project.duration  # type: ignore
 
-    project_obj.edited_at = datetime.datetime.utcnow()
+    project_obj.edited_at = datetime.datetime.utcnow()  # type: ignore
 
     try:
         db.commit()
