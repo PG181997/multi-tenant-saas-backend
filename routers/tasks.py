@@ -1,12 +1,12 @@
+import datetime
 from enum import Enum
-
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from database import SessionLocal
 from routers.auth import get_current_user
 from sqlalchemy.orm import Session
 from models import Projects, User, Tasks
+from typing import Optional
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -40,6 +40,12 @@ class Create_new_task(BaseModel):
     assigned_to: int
     task_status: Task_status = Task_status.todo
     project_id: int
+
+
+class Update_task(BaseModel):
+    task_name: Optional[str] = None
+    assigned_to: Optional[int] = None
+    task_status: Optional[Task_status] = None
 
 
 @router.post("/")
@@ -99,9 +105,62 @@ async def create_new_task(
     return {"response": "task created"}
 
 
-@router.patch("/")
-async def update_task():
-    return {"response": "project updated"}
+@router.patch("/{task_id}")
+async def update_task(
+    task_id: int,
+    task: Update_task,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+
+    task_obj = db.query(Tasks).filter(Tasks.id == task_id).first()
+
+    if not task_obj:
+        raise HTTPException(status_code=404, detail="Data not found")
+    task_project_obj = get_project_object(db, task_obj.project_id)
+    if not task_project_obj:
+        raise HTTPException(status_code=404, detail="Data not found")
+    task_company_id = task_project_obj.company_id
+
+    if task_company_id != current_user.get("company_id"):
+        raise HTTPException(status_code=401, detail="Request not allowed.")
+
+    if (task.assigned_to != None or task.task_name != None) and current_user.get(
+        "role"
+    ) != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admin can update the task assigned to."
+        )
+
+    if task.task_status != None and (
+        task_obj.assigned_to != current_user.get("user_id")
+        and task_obj.created_by_id != current_user.get("user_id")
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail="Only task creator or assigned user can update the status",
+        )
+
+    if task.task_name != None:
+        task_obj.task_name = task.task_name
+
+    if task.assigned_to != None:
+        task_obj.assigned_to = task.assigned_to
+
+    if task.task_status != None:
+        task_obj.task_status = task.task_status
+
+    task_obj.edited_at = datetime.datetime.utcnow()
+
+    try:
+        db.commit()
+        db.refresh(task_obj)
+        return {"response": "task updated"}
+
+    except:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update task.")
 
 
 @router.get("/")
@@ -129,7 +188,32 @@ async def get_all_task(
     ]
 
 
-@router.delete("/delete")
-async def delete_task():
+@router.delete("/{task_id}")
+async def delete_task(
+    task_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)
+):
 
-    return {"response": "project deleted"}
+    current_user_role = (current_user.get("role") or "").lower()
+    if current_user_role != "admin":
+        raise HTTPException(status_code=401, detail="Only admin can delete the task.")
+    current_user_company_id = current_user.get("company_id")
+
+    task_obj = db.query(Tasks).filter(Tasks.id == task_id).first()
+    if not task_obj:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    project_obj = get_project_object(db, task_obj.project_id)
+
+    if not project_obj:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    if project_obj.company_id != current_user_company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    try:
+        db.delete(task_obj)
+        db.commit()
+        return {"message": "Task deleted successfully"}
+    except:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete Task")
+    # return {"response": "project deleted"}
