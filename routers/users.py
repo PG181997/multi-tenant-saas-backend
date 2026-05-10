@@ -1,9 +1,9 @@
-from email.policy import HTTP
-from re import L
-from turtle import st
+
+
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from database import SessionLocal
+from dependencies import get_db
 from models import User, Company
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -16,14 +16,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["Users"])
 bcrypt_context = CryptContext(schemes=["bcrypt"])
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 def get_all_users_from_db(db):

@@ -2,7 +2,7 @@ import datetime
 from enum import Enum
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from database import SessionLocal
+from dependencies import get_db
 from routers.auth import get_current_user
 from sqlalchemy.orm import Session
 from models import Projects, User, Tasks
@@ -11,13 +11,6 @@ from typing import Optional
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 def get_project_object(db, project_id: int):

@@ -8,19 +8,17 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from typing import Annotated
 from jose import jwt, JWTError
+from dotenv import load_dotenv
+import os
+from dependencies import get_db
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-SECRET_KEY = "G7kP2zX9mQ4vB8rC1Yt6Lw0eS3H5JdUa"
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 
-def get_db():
-	db = SessionLocal()
-	try:
-		yield db
 
-	finally:
-		db.close()
 		
 bcrypt_context = CryptContext(schemes=['bcrypt'])
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')

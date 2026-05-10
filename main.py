@@ -21,11 +21,3 @@ app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-
-    finally:
-        db.close()

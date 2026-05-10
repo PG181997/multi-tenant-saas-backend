@@ -2,7 +2,7 @@ import datetime
 
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException
-from database import SessionLocal
+from dependencies import get_db
 from routers.auth import get_current_user
 from pydantic import BaseModel
 import logging
@@ -10,15 +10,6 @@ from models import Projects
 from typing import Optional
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 def get_all_company_projects(db, companid: int):

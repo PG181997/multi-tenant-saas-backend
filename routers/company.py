@@ -1,21 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
-from database import SessionLocal
+from dependencies import get_db
 from sqlalchemy.orm import Session
 import models
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
-
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 class Create_company(BaseModel):
