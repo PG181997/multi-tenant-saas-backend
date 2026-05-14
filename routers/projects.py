@@ -64,11 +64,10 @@ async def create_new_project(
         db.add(new_project)
         db.commit()
         db.refresh(new_project)
-        return {"response": "sucess"}
-    except:
+        return {"response": "success"}
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create new project")
-
 
 @router.patch("/{project_id}")
 async def update_project(
@@ -87,7 +86,7 @@ async def update_project(
     current_user_company_id = current_user.get("company_id")
 
     if project_company_id != current_user_company_id or current_user_role != "admin":
-        raise HTTPException(status_code=401, detail="wrong role or company")
+        raise HTTPException(status_code=403, detail="wrong role or company")
 
     if project.project_name != None:
         project_obj.project_name = project.project_name  # type: ignore
@@ -102,7 +101,7 @@ async def update_project(
         db.refresh(project_obj)
         return {"response": "project updated"}
 
-    except:
+    except Exception:
         db.rollback()
 
         raise HTTPException(status_code=500, detail="Project update failed")
@@ -136,14 +135,14 @@ async def delete_project(
     current_user_company_id = current_user.get("company_id")
 
     if project_company_id != current_user_company_id or current_user_role != "admin":
-        raise HTTPException(status_code=401, detail="wrong role or company")
+        raise HTTPException(status_code=403, detail="wrong role or company")
     logging.info(f"project_data: {project_obj}")
 
     try:
         db.delete(project_obj)
         db.commit()
         return {"message": "Project deleted successfully"}
-    except:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to delete project")
     # return {"response": "project deleted"}

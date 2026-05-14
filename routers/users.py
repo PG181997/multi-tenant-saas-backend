@@ -68,7 +68,7 @@ async def update_user(
 ):
     current_user_role = (current_user.get("role") or "").lower()
     current_user_company_id = current_user.get("company_id")
-    current_user_id = current_user.get("id")
+    current_user_id = current_user.get("user_id")
 
     if current_user_role not in ["admin", "super_admin"]:
         raise HTTPException(
@@ -222,7 +222,7 @@ async def delete_user(
 
     current_user_role = (current_user.get("role") or "").lower()
     current_user_company_id = current_user.get("company_id")
-    current_user_user_id = current_user.get("id")
+    current_user_user_id = current_user.get("user_id")
 
     if current_user_role not in ["admin", "super_admin"]:
         raise HTTPException(

@@ -57,7 +57,7 @@ async def create_new_task(
     current_user_id = current_user.get("user_id")
 
     if current_user_role != "admin":
-        raise HTTPException(status_code=401, detail="Only admin can create new task.")
+        raise HTTPException(status_code=403, detail="Only admin can create new task.")
 
     project_obj = get_project_object(db, task_project_id)
 
@@ -73,12 +73,12 @@ async def create_new_task(
 
     if current_user_company != project_company:
         raise HTTPException(
-            status_code=401, detail="admin can create new task in their company."
+            status_code=403, detail="admin can create new task in their company."
         )
 
     if current_user_company != assigned_to_company:
         raise HTTPException(
-            status_code=401, detail="admin can assign new task in their company users."
+            status_code=403, detail="admin can assign new task in their company users."
         )
     new_task = Tasks(
         task_name=task_name,
@@ -92,7 +92,7 @@ async def create_new_task(
         db.add(new_task)
         db.commit()
         db.refresh(new_task)
-    except:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=400, detail="Failed to create new task.")
     return {"response": "task created"}
@@ -116,7 +116,7 @@ async def update_task(
     task_company_id = task_project_obj.company_id
 
     if task_company_id != current_user.get("company_id"):
-        raise HTTPException(status_code=401, detail="Request not allowed.")
+        raise HTTPException(status_code=403, detail="Request not allowed.")
 
     if (task.assigned_to != None or task.task_name != None) and current_user.get(
         "role"
@@ -151,7 +151,7 @@ async def update_task(
         db.refresh(task_obj)
         return {"response": "task updated"}
 
-    except:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update task.")
 
@@ -188,7 +188,7 @@ async def delete_task(
 
     current_user_role = (current_user.get("role") or "").lower()
     if current_user_role != "admin":
-        raise HTTPException(status_code=401, detail="Only admin can delete the task.")
+        raise HTTPException(status_code=403, detail="Only admin can delete the task.")
     current_user_company_id = current_user.get("company_id")
 
     task_obj = db.query(Tasks).filter(Tasks.id == task_id).first()
@@ -206,7 +206,7 @@ async def delete_task(
         db.delete(task_obj)
         db.commit()
         return {"message": "Task deleted successfully"}
-    except:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to delete Task")
     # return {"response": "project deleted"}

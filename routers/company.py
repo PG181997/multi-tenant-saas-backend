@@ -26,7 +26,7 @@ def create_company(
 
     if current_user["role"] != "super_admin":
         raise HTTPException(
-            status_code=304, detail="only super admin can creatge company"
+            status_code=403, detail="only super admin can creatge company"
         )
 
     existing_company = get_all_companies(db)
@@ -61,7 +61,7 @@ def delete_company(
 
     if current_user["role"] != "super_admin":
         raise HTTPException(
-            status_code=304, detail="only super admin can creatge company"
+            status_code=403, detail="only super admin can creatge company"
         )
 
     company = db.query(models.Company).filter(models.Company.id == company_id).first()

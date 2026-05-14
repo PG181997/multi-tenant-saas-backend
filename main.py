@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from routers import company, users, auth, projects, tasks
 import models
 from database import engine
-from database import SessionLocal
 import logging
 
 
